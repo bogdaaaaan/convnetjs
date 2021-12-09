@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <title>ConvNetJS Deep Q Learning Reinforcement Learning with Neural Network demo</title>
+        <meta name="description" content="" />
+        <meta name="author" content="" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <script src="./js/libs/convnet.js"></script>
+        <script src="./js/libs/util.js"></script>
+        <script src="./js/libs/vis.js"></script>
+        <script src="./js/libs/deepqlearn.js"></script>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div id="wrap">        
+            <h1>State Visualizations</h1>
+            <canvas id="vis_canvas" width="350" height="150"></canvas>
+            <canvas id="graph_canvas" width="350" height="150"></canvas><br />
+            <canvas id="net_canvas" width="700" height="200"></canvas><br />
+            <canvas id="canvas"></canvas>
+            
+            <div id="brain_info_div"></div>
+
+            <h1>Controls</h1>
+            <button id="go_very_fast">Go very fast</button>
+            <button id="go_fast">Go fast</button>
+            <button id="go_normal">Go normal speed</button>
+            <button id="go_slow">Go slow</button><br />
+            <button id="start_learn">Start Learning</button>
+            <button id="stop_learn">Stop Learning</button>
+            <button id="save_net">Save net</button>
+            <button id="load_net">Load net</button>
+        </div>
+        <input type="file" id="file_upload" style="display:none">
+
+        <script src="index.js" type="module"></script>
+    </body>
+</html>
