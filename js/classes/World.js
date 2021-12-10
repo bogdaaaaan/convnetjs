@@ -1,7 +1,7 @@
 import Vec from './Vector.js';
 import Wall from './Wall.js';
 import Item from './Item.js';
-import { LEVEL_GRID, CELL_SIZE, getGridFreeSquares, PACMAN_POS, GHOST_POSITIONS } from '../utils/constants.js';
+import { LEVEL_GRID, CELL_SIZE, PACMAN_POS, GHOST_POSITIONS } from '../utils/constants.js';
 import Enemy from './Enemy.js';
 
 // World object contains many agents and walls and food and stuff
@@ -58,7 +58,7 @@ const line_point_intersect = (p1, p2, p0, radius) => {
 export default class World {
     constructor(canvas) {
         this.agents = [];
-        this.enemy = [new Enemy(GHOST_POSITIONS[0])];
+        this.enemy = [new Enemy(GHOST_POSITIONS[0], 'random'), new Enemy(GHOST_POSITIONS[1], 'follow')];
         this.W = canvas.width;
         this.H = canvas.height;
 
@@ -176,6 +176,54 @@ export default class World {
         this.grid[coords[1]][coords[0]] = 0;
     }
 
+    respawn_food = () => {
+        this.items = [];
+        for (let i = 0; i < this.grid.length; i++) {
+            for (let j = 0; j < this.grid[i].length; j++) {
+                if (this.grid[i][j] !== 1 && this.grid[i][j] !== 9) {
+                    this.grid[i][j] = 2;
+                    this.items.push(new Item((j * CELL_SIZE) + (CELL_SIZE / 2), (i * CELL_SIZE) + (CELL_SIZE / 2), 1, j, i));
+                }
+            }
+        }
+    }
+
+    check_collisions = () => {
+        // ghost collision
+        let collision_flag = false;
+        for (let i = 0; i < this.enemy.length; i++) {
+            const ghost = this.enemy[i];
+            // see if some agent goes into enemy
+            for (let j = 0; j < this.agents.length; j++) {
+                const agent = this.agents[j];
+                const dist = agent.pos.dist_from(ghost.pos);
+
+                if (dist < ghost.radius + agent.rad) {
+                    // wait lets just make sure that this isn't through a wall
+                    let res_check = this.stuff_collide_(agent.pos, ghost.pos, true, false, false);
+                    if (!res_check) {
+                        agent.digestion_signal += -20;
+                       
+                        agent.pos = new Vec(PACMAN_POS[1], PACMAN_POS[0]);
+                        agent.coords = [agent.pos.x < CELL_SIZE ? 0 : (agent.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, agent.pos.y < CELL_SIZE ? 0 : (agent.pos.y - (CELL_SIZE / 2)) / CELL_SIZE];
+
+                        collision_flag = true;
+                        this.respawn_food();
+                    }
+                }
+            }
+        }
+        if (collision_flag) {
+            for (let i = 0; i < this.enemy.length; i++) {
+                const ghost = this.enemy[i];
+
+                ghost.pos = new Vec((GHOST_POSITIONS[i][0] * CELL_SIZE) + (CELL_SIZE / 2), (GHOST_POSITIONS[i][1] * CELL_SIZE) + (CELL_SIZE / 2));
+                ghost.coords = [ghost.pos.x < CELL_SIZE ? 0 : (ghost.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, ghost.pos.y < CELL_SIZE ? 0 : (ghost.pos.y - (CELL_SIZE / 2)) / CELL_SIZE]
+            }
+            collision_flag = false;
+        }
+    }
+
     tick = () => {
         // tick the environment
         this.clock++;
@@ -249,29 +297,9 @@ export default class World {
             agent.coords = [agent.pos.x < CELL_SIZE ? 0 : (agent.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, agent.pos.y < CELL_SIZE ? 0 : (agent.pos.y - (CELL_SIZE / 2)) / CELL_SIZE];
         }
 
+
         // ghost collision
-        for (let i = 0; i < this.enemy.length; i++) {
-            const ghost = this.enemy[i];
-
-            // see if some agent goes into enemy
-            for (let j = 0; j < this.agents.length; j++) {
-                const agent = this.agents[j];
-                const dist = agent.pos.dist_from(ghost.pos);
-
-                if (dist < ghost.radius + agent.rad) {
-                    // wait lets just make sure that this isn't through a wall
-                    let res_check = this.stuff_collide_(agent.pos, ghost.pos, true, false, false);
-                    if (!res_check) {
-                        agent.digestion_signal += -12.0;
-                        agent.pos = new Vec(PACMAN_POS[1], PACMAN_POS[0]);
-                        agent.coords = [agent.pos.x < CELL_SIZE ? 0 : (agent.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, agent.pos.y < CELL_SIZE ? 0 : (agent.pos.y - (CELL_SIZE / 2)) / CELL_SIZE];
-
-                        ghost.pos = new Vec((GHOST_POSITIONS[i][0] * CELL_SIZE) + (CELL_SIZE / 2), (GHOST_POSITIONS[i][1] * CELL_SIZE) + (CELL_SIZE / 2));
-                        ghost.coords = [ghost.pos.x < CELL_SIZE ? 0 : (ghost.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, ghost.pos.y < CELL_SIZE ? 0 : (ghost.pos.y - (CELL_SIZE / 2)) / CELL_SIZE]
-                    }
-                }
-            }
-        }
+        this.check_collisions();
 
         // tick all items
         let update_items = false;
@@ -288,45 +316,48 @@ export default class World {
                     let res_check = this.stuff_collide_(agent.pos, item.position, true, false, false);
                     if (!res_check) {
                         // ding! nom nom nom
-                        if (item.type === 1) agent.digestion_signal += 5.0; // mmm delicious apple
-                        if (item.type === 2) agent.digestion_signal += -6.0; // ewww poison
-
+                        if (item.type === 1) agent.digestion_signal += 6; // mmm delicious apple
+                        
                         item.cleanup_ = true;
                         update_items = true;
                         // change level grid
                         this.free_grid(item.coordinates);
-
                         // break out of loop, item was consumed
                         break; 
                     }
                 }
             }
 
-            if (item.age > 5000 && this.clock % 100 === 0 && convnetjs.randf(0, 1) < 0.1) {
-                // replace this one, has been around too long
-                item.cleanup_ = true;
-                update_items = true;
-            }
+            // if (item.age > 5000 && this.clock % 100 === 0 && convnetjs.randf(0, 1) < 0.1) {
+            //     // replace this one, has been around too long
+            //     item.cleanup_ = true;
+            //     update_items = true;
+            // }
         }
 
         if (update_items) {
             let old_items = [];
             for (let i = 0; i < this.items.length; i++) {
-                let item = this.items[i];
+                const item = this.items[i];
+                this.free_grid(item.coordinates);
                 if (!item.cleanup_) old_items.push(item);
             }
             // swap
             this.items = old_items;
         }
 
-        if (this.items.length < 50) {
-            let available_squares = getGridFreeSquares(this.grid);
-            if (available_squares.length) {
-                let [new_item_x, new_item_y] = available_squares[convnetjs.randi(0, available_squares.length -1)];
-                let new_item = new Item((new_item_x * CELL_SIZE) + (CELL_SIZE / 2), (new_item_y * CELL_SIZE) + (CELL_SIZE / 2) ,1, new_item_x, new_item_y);
-                this.items.push(new_item);
-            }
-        }
+        // if (this.items.length < 100) {
+        //     for (let i = 0; i < 100 - this.items.length; i++) {
+        //         let available_squares = getGridFreeSquares(this.grid);
+        //         if (available_squares.length) {
+        //             let [new_item_x, new_item_y] = available_squares[Math.floor(Math.random()*available_squares.length)];
+                    
+        //             let new_item = new Item((new_item_x * CELL_SIZE) + (CELL_SIZE / 2), (new_item_y * CELL_SIZE) + (CELL_SIZE / 2), 1, new_item_x, new_item_y);
+        //             this.grid[new_item_y][new_item_x] = 2;
+        //             this.items.push(new_item);
+        //         }
+        //     }
+        // }
 
         // agents are given the opportunity to learn based on feedback of their action on environment
         for (let i = 0; i < this.agents.length; i++) {
@@ -338,28 +369,7 @@ export default class World {
         }
 
         // ghost collision
-        for (let i = 0; i < this.enemy.length; i++) {
-            const ghost = this.enemy[i];
-
-            // see if some agent goes into enemy
-            for (let j = 0; j < this.agents.length; j++) {
-                const agent = this.agents[j];
-                const dist = agent.pos.dist_from(ghost.pos);
-
-                if (dist < ghost.radius + agent.rad) {
-                    // wait lets just make sure that this isn't through a wall
-                    let res_check = this.stuff_collide_(agent.pos, ghost.pos, true, false, false);
-                    if (!res_check) {
-                        agent.digestion_signal += -12.0;
-                        agent.pos = new Vec(PACMAN_POS[1], PACMAN_POS[0]);
-                        agent.coords = [agent.pos.x < CELL_SIZE ? 0 : (agent.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, agent.pos.y < CELL_SIZE ? 0 : (agent.pos.y - (CELL_SIZE / 2)) / CELL_SIZE];
-
-                        ghost.pos = new Vec((GHOST_POSITIONS[i][0] * CELL_SIZE) + (CELL_SIZE / 2), (GHOST_POSITIONS[i][1] * CELL_SIZE) + (CELL_SIZE / 2));
-                        ghost.coords = [ghost.pos.x < CELL_SIZE ? 0 : (ghost.pos.x - (CELL_SIZE / 2)) / CELL_SIZE, ghost.pos.y < CELL_SIZE ? 0 : (ghost.pos.y - (CELL_SIZE / 2)) / CELL_SIZE]
-                    }
-                }
-            }
-        }
+        this.check_collisions();
     }
 }
 
