@@ -2,19 +2,38 @@ import { CELL_SIZE } from '../utils/constants.js';
 import Vec from './Vector.js';
 
 export default class Enemy {
-    constructor(coords) {
+    constructor(coords, movement) {
         this.pos = new Vec((coords[0] * CELL_SIZE) + (CELL_SIZE / 2), (coords[1] * CELL_SIZE) + (CELL_SIZE / 2));
-        // x, y
+        // this.coords[0], y
         this.coords = coords;
         this.radius = 10;
+        this.movement = movement;
     }
 
     makeMove(grid, to) {   
-        // x, y => y, x
-        [to[0], to[1]] = [to[1], to[0]];
+        if (this.movement === 'follow') this.follow(grid, to);
+        if (this.movement === 'random') this.random(grid);
+    }
 
-        let path = this.dfs(grid, [this.coords[1], this.coords[0]], to);
+    random(grid) {
+        let moves = [];
+        if (grid[this.coords[1]-1][this.coords[0]] !== 1) moves.push([this.coords[0],this.coords[1]-1]);
+        if (grid[this.coords[1]+1][this.coords[0]] !== 1) moves.push([this.coords[0],this.coords[1]+1]);
+        if (grid[this.coords[1]][this.coords[0]-1] !== 1) moves.push([this.coords[0]-1,this.coords[1]]);
+        if (grid[this.coords[1]][this.coords[0]+1] !== 1) moves.push([this.coords[0]+1,this.coords[1]]);
+
+        let rand_indx = Math.floor(Math.random()*moves.length);
         
+        this.coords = moves[rand_indx];
+        this.pos = new Vec((this.coords[0] * CELL_SIZE) + (CELL_SIZE / 2), (this.coords[1] * CELL_SIZE) + (CELL_SIZE / 2));
+    }
+
+    follow(grid, to) {
+        // this.coords[0], y => y, this.coords[0]
+        let to_position = [...to];
+        [to_position[0], to_position[1]] = [to_position[1], to_position[0]];
+
+        let path = this.dfs(grid, [this.coords[1], this.coords[0]], to_position);
         if (!path.length) return;
 
         let move = path.shift();
