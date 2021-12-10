@@ -21,7 +21,7 @@ export const LEVEL_GRID = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
-export const GHOST_POSITIONS = [[8,10], [8,8]];
+export const GHOST_POSITIONS = [[11,8], [8,8]];
 
 export const GRID_SIZE = LEVEL_GRID.length;
 export const CELL_SIZE = 30;
@@ -31,18 +31,6 @@ for (let i = 0; i < LEVEL_GRID.length; i++) {
     for (let j = 0; j < LEVEL_GRID[i].length; j++) {
         if (LEVEL_GRID[i][j] === 0) pacman_pos = [(i * CELL_SIZE) + (CELL_SIZE / 2), (j * CELL_SIZE) + (CELL_SIZE / 2)];
     }
-}
-
-export const getGridFreeSquares = (grid) => {
-    let free = [];
-    for (let i = 0; i < grid.length; i++) {
-        for (let j = 0; j < grid[i].length; j++) {
-            if (grid[i][j] === 0) {
-                free.push([j, i]);
-            }
-        }
-    }
-    return free;
 }
 
 export const PACMAN_POS = pacman_pos;
